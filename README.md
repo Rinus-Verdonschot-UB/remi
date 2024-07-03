@@ -1,3 +1,5 @@
+![App Screenshot](static/logo.jpg)
+
 # PubMed Proximity Search with Wildcards
 
 This Flask app addresses the limitation in PubMed where proximity searches cannot be performed together with wildcard search terms. 
