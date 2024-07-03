@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Meta stuff: character encoding, viewport settings for responsiveness, and page title -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PubMed Search</title>
+    <!-- Linking CSS for styling the page -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- get jQuery for easier JavaScript manipulation, see: https://jquery.com/, so basically the stuff after line 91 (script) below -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="left-content">
+            <!-- Logo at the top left -->
+            <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo" class="logo">
+            <!-- Form to enter search terms -->
+            <form id="search-form" class="section">
+                <div class="form-group">
+                    <label for="term1">Enter Term 1:</label>
+                    <input type="text" id="term1" name="term1" required>
+                </div>
+                <div class="form-group">
+                    <label for="term2">Enter Term 2:</label>
+                    <input type="text" id="term2" name="term2" required>
+                </div>
+                <button type="submit" class="search-button">Search</button>
+            </form>
+            
+            <!-- Section to set the proximity distance and generate output -->
+            <div class="section">
+                <label for="proximity-distance">Proximity Distance:</label>
+                <input type="number" id="proximity-distance" name="proximity-distance" min="1" max="10" required>
+                <button id="generate-output">Generate Output</button>
+            </div>
+
+            <!-- Show the Progress messages while the search is running -->
+            <div id="progress-messages" class="section">
+                <h2>Pubmed Scanning Progress</h2>
+                <p class="loading-message" style="display: none;">Getting Results... please be patient</p>
+            </div>
+            
+            <!-- Output section to show the generated search queries -->
+            <div id="output-field" class="section">
+                <h2>Generated Output</h2>
+                <textarea id="output-text" rows="4" style="width: 100%;" readonly></textarea>
+                <button id="copy-output">Copy Output</button>
+            </div>
+        </div>
+
+        <div class="middle-content">
+            <!-- Display results for the first search term -->
+            <div id="results" class="section">
+                <h2>Results for Term 1</h2>
+                <p>Total Hits for Term 1: <span id="total-hits-term1"></span></p>
+                <table id="frequency-table-term1">
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Word</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="right-content">
+            <!-- Display results for the second search term -->
+            <div id="results" class="section">
+                <h2>Results for Term 2</h2>
+                <p>Total Hits for Term 2: <span id="total-hits-term2"></span></p>
+                <table id="frequency-table-term2">
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Word</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // See https://jquery.com/ if you are interested.
+        // First, wait for the document to be fully loaded.
+        $(document).ready(function() {
+            // Handle form submission
+            $('#search-form').on('submit', function(event) {
+                event.preventDefault(); // Prevent default form submission
+                $('#progress-messages .loading-message').show(); // Show progress message
+                $('#progress-messages').append('<p class="loading-message">Getting Results... please be patient</p>');
+                $('#total-hits-term1').text(''); // Clear previous results
+                $('#total-hits-term2').text('');
+                $('#frequency-table-term1 tbody').empty();
+                $('#frequency-table-term2 tbody').empty();
+
+                var term1 = $('#term1').val();
+                var term2 = $('#term2').val();
+
+                // Send search terms to the server
+                $.ajax({
+                    url: '/search',
+                    method: 'POST',
+                    data: { term1: term1, term2: term2 },
+                    success: function() {
+                        var source = new EventSource('/search_stream');
+
+                        // Process incoming search results
+                        source.onmessage = function(event) {
+                            var data = event.data;
+                            if (data === 'DONE') {
+                                $('#progress-messages .loading-message').hide();
+                                source.close(); // Close the connection when done
+                            } else {
+                                try {
+                                    var result = JSON.parse(data);
+                                    if (result.term1_variants) {
+                                        $('#total-hits-term1').text(result.term1_variants.length);
+                                        var tableBody1 = $('#frequency-table-term1 tbody');
+                                        tableBody1.empty();
+                                        result.term1_variants.forEach(function(item) {
+                                            var row = `<tr>
+                                                <td><input type="checkbox" class="result-checkbox-term1" value="${item.word}"></td>
+                                                <td>${item.word}</td>
+                                                <td>${item.count}</td>
+                                            </tr>`;
+                                            tableBody1.append(row);
+                                        });
+                                    }
+                                    if (result.term2_variants) {
+                                        $('#total-hits-term2').text(result.term2_variants.length);
+                                        var tableBody2 = $('#frequency-table-term2 tbody');
+                                        tableBody2.empty();
+                                        result.term2_variants.forEach(function(item) {
+                                            var row = `<tr>
+                                                <td><input type="checkbox" class="result-checkbox-term2" value="${item.word}"></td>
+                                                <td>${item.word}</td>
+                                                <td>${item.count}</td>
+                                            </tr>`;
+                                            tableBody2.append(row);
+                                        });
+                                    }
+                                } catch (e) {
+                                    $('#progress-messages').append(`<p>${data}</p>`);
+                                }
+                            }
+                        };
+                    }
+                });
+            });
+
+            // Generate the output based on selected terms
+            $('#generate-output').on('click', function() {
+                var checkedWordsTerm1 = [];
+                var checkedWordsTerm2 = [];
+                $('.result-checkbox-term1:checked').each(function() {
+                    checkedWordsTerm1.push($(this).val());
+                });
+                $('.result-checkbox-term2:checked').each(function() {
+                    checkedWordsTerm2.push($(this).val());
+                });
+
+                var proximityDistance = $('#proximity-distance').val();
+                if (checkedWordsTerm1.length > 0 && checkedWordsTerm2.length > 0 && proximityDistance >= 1 && proximityDistance <= 10) {
+                    var output = [];
+                    checkedWordsTerm1.forEach(function(term1) {
+                        checkedWordsTerm2.forEach(function(term2) {
+                            output.push(`"${term1} ${term2}"[tiab:~${proximityDistance}]`);
+                        });
+                    });
+                    $('#output-text').val(output.join(' OR '));
+                } else {
+                    alert('Please select at least one word from both terms and set a proximity distance between 1 and 10.');
+                }
+            });
+
+            // Copy the output to clipboard
+            $('#copy-output').on('click', function() {
+                var outputText = document.getElementById('output-text');
+                outputText.select();
+                outputText.setSelectionRange(0, 99999); // For mobile devices
+                document.execCommand('copy');
+                alert('Output copied to clipboard');
+            });
+        });
+    </script>
+</body>
+</html>

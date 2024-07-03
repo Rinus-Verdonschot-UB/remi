@@ -1,0 +1,87 @@
+/* The container basically holds everything together, using a flexbox for layout, space out items */
+.container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+/* Left, middle, and right columns with padding for spacing */
+.left-content, .middle-content, .right-content {
+    flex: 1;
+    padding: 10px;
+}
+
+/* Left column with a right border for separation */
+.left-content {
+    border-right: 1px solid #ccc;
+}
+
+/* Middle column also with a right border for separation */
+.middle-content {
+    border-right: 1px solid #ccc;
+}
+
+/* Sections with margin at the bottom for spacing */
+.section {
+    margin-bottom: 20px;
+}
+
+/* Progress messages styled with a border and padding, smaller font size */
+#progress-messages {
+    border: 1px solid #ccc;
+    padding: 10px;
+    font-size: 0.9em;
+}
+
+/* Output field with margin on top for spacing */
+#output-field {
+    margin-top: 10px;
+}
+
+/* Copy button with margin on top for spacing */
+#copy-output {
+    margin-top: 5px;
+}
+
+/* Tables are full width, borders collapsed, margin on top for spacing */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+/* Table elements with border */
+table, th, td {
+    border: 1px solid #ccc;
+}
+
+/* Table headers and cells with padding and left-aligned text */
+th, td {
+    padding: 5px;
+    text-align: left;
+}
+
+/* Loading messages in red and bold for emphasis */
+.loading-message {
+    color: red;
+    font-weight: bold;
+}
+
+/* Logo image with max width, margin at the bottom for spacing */
+.logo {
+    width: 100%;
+    max-width: 200px;
+    margin-bottom: 20px;
+}
+
+/* Form groups with column layout and left-aligned items */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* Search button aligned to the start (left) */
+.search-button {
+    align-self: flex-start;
+}
